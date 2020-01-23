@@ -25,13 +25,14 @@ fn run_script(file_path: &String) {
 
     let source =
         fs::read_to_string(file_path).expect(&format!("Cannot read file at {}", file_path));
-    run(source);
+    run(source).expect("Failed to run source");
 }
 
 fn run_prompt() {
     let stdin = io::stdin();
     let input = &mut String::new();
     let mut source_acc: Vec<String> = Vec::new();
+
     loop {
         input.clear();
         stdin.read_line(input).expect("Could not read line");
@@ -58,8 +59,4 @@ fn run(source: String) -> Result<String, ScannerError> {
         }
         Err(vec_scanner_errs) => Err(vec_scanner_errs.get(0).expect("No error in vector").clone()),
     }
-}
-
-fn collect_slice<T>(source: Vec<T>, from: usize, to: usize) -> Vec<T> {
-    source
 }

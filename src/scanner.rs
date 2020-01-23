@@ -45,7 +45,7 @@ impl Scanner {
         }
     }
     fn is_empty(&self) -> bool {
-        self.current >= (self.characters.len() - 1)
+        self.current >= self.characters.len()
     }
 
     fn add_token(&mut self, token: Token) {
@@ -64,7 +64,7 @@ impl Scanner {
         self.current += 1;
         *self
             .characters
-            .get(self.current)
+            .get(self.current - 1)
             .expect("No characters left to scan!")
     }
 
@@ -146,6 +146,33 @@ impl Scanner {
         }
     }
 
+    fn consume_block_comment(&mut self, depth: usize) {
+        // Consume '*'
+        self.advance();
+
+        loop {
+            if self.is_empty() {
+                self.errors.push(ScannerError {
+                    message: "Unclosed block comment".to_owned(),
+                    line_number: self.current_line,
+                    source: char_range_to_string(&self.characters, self.start, self.current),
+                });
+                return;
+            }
+            let c = self.advance();
+            if c == '\n' {
+                self.current_line += 1;
+            } else if c == '*' && self.peek() == '/' {
+                self.advance(); // Consume: '/'
+                return;
+            }
+            // Go deeper
+            else if c == '/' && self.peek() == '*' {
+                self.consume_block_comment(depth + 1);
+            }
+        }
+    }
+
     fn scan_token(&mut self) {
         let c = self.advance();
         match c {
@@ -193,9 +220,11 @@ impl Scanner {
                 if self.next(&'/') {
                     // Comment goes until end of line
                     // TODO: Newline and \0?
-                    while self.peek() != '\n' && self.is_empty() {
+                    while self.peek() != '\n' && !self.is_empty() {
                         self.advance();
                     }
+                } else if self.next(&'*') {
+                    self.consume_block_comment(0);
                 } else {
                     self.add_token(Token::Slash);
                 }
@@ -219,13 +248,118 @@ impl Scanner {
             }
         };
     }
-
     pub fn scan_tokens(&mut self) -> Result<Vec<TokenWrapper>, Vec<ScannerError>> {
         while !self.is_empty() {
             self.start = self.current;
             self.scan_token();
         }
         self.add_token(Token::Eof);
+        if !self.errors.is_empty() {
+            return Err(self.errors.clone());
+        }
         Ok(self.tokens_wrappers.clone())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+    use crate::utils::{join_vec_debug, s};
+
+    struct ScanTokensTestCase {
+        input: &'static str,
+        expected: Vec<Token>,
+    }
+    // TODO: Do some test cases
+    struct ScannerErrorTestCase {
+        input: &'static str,
+        expected: Vec<ScannerError>,
+    }
+
+    #[test]
+    fn test_scan_tokens() {
+        let test_table: Vec<ScanTokensTestCase> = vec![
+            ScanTokensTestCase {
+                input: "hello;",
+                expected: vec![
+                    Token::Identifier("hello".to_owned()),
+                    Token::Semicolon,
+                    Token::Eof,
+                ],
+            },
+            ScanTokensTestCase {
+                input: "var k = 10;",
+                expected: vec![
+                    Token::Var,
+                    Token::Identifier(s("k")),
+                    Token::Equal,
+                    Token::Number(10.0),
+                    Token::Semicolon,
+                    Token::Eof,
+                ],
+            },
+            ScanTokensTestCase {
+                input: "fun hello(){
+
+                };",
+                expected: vec![
+                    Token::Fun,
+                    Token::Identifier(s("hello")),
+                    Token::LeftParen,
+                    Token::RightParen,
+                    Token::LeftBrace,
+                    Token::RightBrace,
+                    Token::Semicolon,
+                    Token::Eof,
+                ],
+            },
+            ScanTokensTestCase {
+                input: "// fun comment = hello",
+                expected: vec![Token::Eof],
+            },
+            ScanTokensTestCase {
+                input: "/* block comment */",
+                expected: vec![Token::Eof],
+            },
+            ScanTokensTestCase {
+                input: "/* /* nested */ block comment */",
+                expected: vec![Token::Eof],
+            },
+        ];
+        for tc in test_table {
+            let mut scanner = Scanner::new(tc.input.to_string());
+            let output = &scanner.scan_tokens().expect("");
+            let actual = join_vec_debug(
+                &output
+                    .iter()
+                    .map(|tw| tw.token.clone())
+                    .collect::<Vec<Token>>(),
+            );
+            let expected = join_vec_debug(&tc.expected);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_scanner_errors() {
+        let test_table: Vec<ScannerErrorTestCase> = vec![ScannerErrorTestCase {
+            input: "/* afdsafdf ",
+            expected: vec![ScannerError {
+                message: "".to_owned(),
+                line_number: 1,
+                source: "".to_owned(),
+            }],
+        }];
+        for tc in test_table {
+            let mut scanner = Scanner::new(tc.input.to_owned());
+            let errors = scanner
+                .scan_tokens()
+                .expect_err(&format!("Expected error in test case: {}", tc.input));
+            let actual = join_vec_debug(&errors);
+            let expected = join_vec_debug(&tc.expected);
+            // println!("{}", actual);
+            assert_eq!(actual, expected);
+        }
     }
 }
