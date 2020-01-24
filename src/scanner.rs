@@ -1,23 +1,52 @@
+use std::error::Error;
 use std::fmt;
 
 use crate::token::{LocationInfo, Token, TokenWrapper, KEYWORDS};
 
 use crate::utils::char_range_to_string;
 
-#[derive(Debug, Clone)]
-pub struct ScannerError {
-    line_number: usize,
+#[derive(Debug, Clone, Default)]
+pub struct Cause {
+    line: usize,
     source: String,
-    message: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum ScannerError {
+    UnclosedBlockComment(Cause),
+    UnexpectedCharacter(Cause),
+    UnterminatedString(Cause),
+}
+
+impl ScannerError {
+    fn discriminant(&self) -> usize {
+        match *self {
+            ScannerError::UnclosedBlockComment(_) => 0,
+            ScannerError::UnexpectedCharacter(_) => 1,
+            ScannerError::UnterminatedString(_) => 2,
+        }
+    }
 }
 
 impl fmt::Display for ScannerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(
-            f,
-            "Error: {}\n{} | {}",
-            self.message, self.line_number, self.source
-        )
+        match *self {
+            ScannerError::UnclosedBlockComment(ref cause) => write!(
+                f,
+                "Block comment not closed\nLine: {}\t{}",
+                cause.line, cause.source
+            ),
+            ScannerError::UnexpectedCharacter(ref cause) => write!(
+                f,
+                "Unexpected character\nLine: {}\t{}",
+                cause.line, cause.source
+            ),
+            ScannerError::UnterminatedString(ref cause) => write!(
+                f,
+                "String not terminated\nLine: {}\t{}",
+                cause.line, cause.source
+            ),
+        }
     }
 }
 
@@ -105,11 +134,10 @@ impl Scanner {
             self.advance();
         }
         if self.is_empty() {
-            self.errors.push(ScannerError {
-                line_number: self.current_line,
-                message: "Unterminated string".to_owned(),
+            self.errors.push(ScannerError::UnterminatedString(Cause {
+                line: self.current_line,
                 source: char_range_to_string(&self.characters, self.start, self.current),
-            });
+            }));
         }
         // Must be closing '"'
         self.advance();
@@ -152,11 +180,10 @@ impl Scanner {
 
         loop {
             if self.is_empty() {
-                self.errors.push(ScannerError {
-                    message: "Unclosed block comment".to_owned(),
-                    line_number: self.current_line,
+                self.errors.push(ScannerError::UnclosedBlockComment(Cause {
+                    line: self.current_line,
                     source: char_range_to_string(&self.characters, self.start, self.current),
-                });
+                }));
                 return;
             }
             let c = self.advance();
@@ -239,11 +266,10 @@ impl Scanner {
                 } else if c.is_alphabetic() {
                     self.consume_identifier();
                 } else {
-                    self.errors.push(ScannerError {
-                        line_number: self.current_line,
+                    self.errors.push(ScannerError::UnexpectedCharacter(Cause {
+                        line: self.current_line,
                         source: c.to_string(),
-                        message: "Unexpected character.".to_owned(),
-                    });
+                    }));
                 }
             }
         };
@@ -345,21 +371,24 @@ mod tests {
     fn test_scanner_errors() {
         let test_table: Vec<ScannerErrorTestCase> = vec![ScannerErrorTestCase {
             input: "/* afdsafdf ",
-            expected: vec![ScannerError {
-                message: "".to_owned(),
-                line_number: 1,
-                source: "".to_owned(),
-            }],
+            expected: vec![ScannerError::UnclosedBlockComment(Default::default())],
         }];
         for tc in test_table {
             let mut scanner = Scanner::new(tc.input.to_owned());
             let errors = scanner
                 .scan_tokens()
                 .expect_err(&format!("Expected error in test case: {}", tc.input));
-            let actual = join_vec_debug(&errors);
-            let expected = join_vec_debug(&tc.expected);
-            // println!("{}", actual);
-            assert_eq!(actual, expected);
+            assert_eq!(
+                errors.len(),
+                tc.expected.len(),
+                "Number of errors do not match"
+            );
+            for (i, error) in errors.iter().enumerate() {
+                assert_eq!(
+                    error.discriminant(),
+                    tc.expected.get(i).unwrap().discriminant()
+                );
+            }
         }
     }
 }
