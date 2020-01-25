@@ -16,5 +16,7 @@ pub enum Operator {
 
 pub enum Expr {
     Binary(Box<Expr>, Box<Expr>, Operator),
-    
+    Grouping(Box<Expr>),
+    Literal(String), // TODO: Change this to primitive?
+    Unary(Operator, Expr),
 }
