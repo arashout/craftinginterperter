@@ -48,7 +48,7 @@ fn run_prompt() {
 }
 
 fn run(source: String) -> Result<String, ScannerError> {
-    let mut scanner = scanner::Scanner::new(source);
+    let mut scanner = Scanner::new(source);
     match scanner.scan_tokens() {
         Ok(wrappers) => {
             let mut output = String::new();
