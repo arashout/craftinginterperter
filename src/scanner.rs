@@ -173,10 +173,11 @@ impl Scanner {
         }
     }
 
-    fn consume_block_comment(&mut self, depth: usize) {
+    fn consume_block_comment_iter(&mut self) {
         // Consume '*'
         self.advance();
 
+        let mut depth = 0;
         loop {
             if self.is_empty() {
                 self.errors.push(ScannerError::UnclosedBlockComment(Cause {
@@ -190,11 +191,14 @@ impl Scanner {
                 self.current_line += 1;
             } else if c == '*' && self.peek() == '/' {
                 self.advance(); // Consume: '/'
-                return;
+                if depth == 0 {
+                    return;
+                }
+                depth -= 1;
             }
             // Go deeper
             else if c == '/' && self.peek() == '*' {
-                self.consume_block_comment(depth + 1);
+                depth += 1;
             }
         }
     }
@@ -250,7 +254,7 @@ impl Scanner {
                         self.advance();
                     }
                 } else if self.next(&'*') {
-                    self.consume_block_comment(0);
+                    self.consume_block_comment_iter();
                 } else {
                     self.add_token(Token::Slash);
                 }
@@ -264,6 +268,7 @@ impl Scanner {
                     self.consume_number();
                 } else if c.is_alphabetic() {
                     self.consume_identifier();
+                } else if c.is_whitespace() {
                 } else {
                     self.errors.push(ScannerError::UnexpectedCharacter(Cause {
                         line: self.current_line,
@@ -353,7 +358,9 @@ mod tests {
         ];
         for tc in test_table {
             let mut scanner = Scanner::new(tc.input.to_string());
-            let output = &scanner.scan_tokens().expect("");
+            let output = &scanner
+                .scan_tokens()
+                .expect(&format!("Code had errors: {}", tc.input.to_owned()));
             let actual = join_vec_debug(
                 &output
                     .iter()
@@ -361,7 +368,7 @@ mod tests {
                     .collect::<Vec<Token>>(),
             );
             let expected = join_vec_debug(&tc.expected);
-            assert_eq!(actual, expected);
+            assert!(actual == expected, "{}", tc.input);
         }
     }
 
