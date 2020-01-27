@@ -296,7 +296,6 @@ mod tests {
         input: &'static str,
         expected: Vec<Token>,
     }
-    // TODO: Do some test cases
     struct ScannerErrorTestCase {
         input: &'static str,
         expected: Vec<ScannerError>,

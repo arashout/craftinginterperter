@@ -9,6 +9,8 @@ mod token;
 
 mod utils;
 
+mod ast;
+
 fn main() {
     if env::args().len() > 2 {
         println!("Usage: jlox [script]");
