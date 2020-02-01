@@ -67,10 +67,10 @@ pub enum Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            Expr::Binary(o, b1, b2) => write!(f, "({} {} {})", o, b1.deref(), b2.deref()),
+            Expr::Binary(o, b1, b2) => write!(f, "({} {} {})", o, b1, b2),
             Expr::Grouping(b) => write!(f, "(group {})", b),
             Expr::Literal(p) => write!(f, "{}", p),
-            Expr::Unary(o, b) => write!(f, "({} {})", o, b.deref()),
+            Expr::Unary(o, b) => write!(f, "({} {})", o, b),
         }
     }
 }

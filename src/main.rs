@@ -5,11 +5,10 @@ use std::io;
 mod scanner;
 use crate::scanner::{Scanner, ScannerError};
 
-mod token;
-
-mod utils;
-
 mod ast;
+mod rpn;
+mod token;
+mod utils;
 
 fn main() {
     if env::args().len() > 2 {
