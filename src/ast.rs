@@ -1,5 +1,5 @@
 use std::fmt;
-use std::ops::Deref;
+
 
 #[derive(Debug)]
 pub enum Operator {

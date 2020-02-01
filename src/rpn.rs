@@ -1,19 +1,18 @@
-use std::ops::Deref;
-
-use crate::ast::{Expr, Operator, Primitive};
+use crate::ast::Expr;
 
 fn rpn(expr: &Expr) -> String {
     match expr {
         Expr::Binary(o, b1, b2) => format!("{} {} {}", rpn(b1), rpn(b2), o),
         Expr::Grouping(b) => format!("{}", rpn(b)),
         Expr::Literal(p) => format!("{}", p),
-        Expr::Unary(o, b) => unimplemented!(),
+        Expr::Unary(_o, _b) => unimplemented!(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::{Expr, Operator, Primitive};
 
     #[test]
     fn test_rpn() {
