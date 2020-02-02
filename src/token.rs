@@ -44,7 +44,7 @@ impl fmt::Display for TokenWrapper {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     // Single-character tokens.
     LeftParen,

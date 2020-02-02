@@ -1,12 +1,13 @@
 use std::fmt;
-
+use std::convert::From;
+use crate::token::Token;
 
 #[derive(Debug)]
 pub enum Operator {
     Plus,
     Minus,
     Star,
-    // Divide
+    Divide,
     Bang,
     BangEqual,
     Equal,
@@ -17,13 +18,35 @@ pub enum Operator {
     LessEqual,
 }
 
+impl From<&Token> for Operator {
+    fn from(token: &Token) -> Self {
+        match token {
+            Token::Minus => Operator::Minus,
+            Token::Plus => Operator::Plus,
+            Token::Slash => Operator::Divide,
+            Token::Star => Operator::Star,
+        
+            // One or two character tokens.
+            Token::Bang => Operator::Bang,
+            Token::BangEqual => Operator::BangEqual,
+            Token::Equal => Operator::Equal,
+            Token::EqualEqual => Operator::EqualEqual,
+            Token::Greater => Operator::Greater,
+            Token::GreaterEqual => Operator::GreaterEqual,
+            Token::Less => Operator::Less,
+            Token::LessEqual => Operator::LessEqual,
+            _ => panic!("Wrong token type for conversion!"),
+        }
+    }
+}
+
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let symbol = match *self {
             Operator::Plus => "+",
             Operator::Minus => "-",
             Operator::Star => "*",
-            // Divide
+            Operator::Divide => "/",
             Operator::Bang => "!",
             Operator::BangEqual => "!=",
             Operator::Equal => "=",

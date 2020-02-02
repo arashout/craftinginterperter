@@ -6,6 +6,7 @@ mod scanner;
 use crate::scanner::{Scanner, ScannerError};
 
 mod ast;
+mod parser;
 mod rpn;
 mod token;
 mod utils;
