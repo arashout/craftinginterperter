@@ -1,6 +1,6 @@
-use std::fmt;
-use std::convert::From;
 use crate::token::Token;
+use std::fmt;
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 pub enum Operator {
@@ -18,24 +18,26 @@ pub enum Operator {
     LessEqual,
 }
 
-impl From<&Token> for Operator {
-    fn from(token: &Token) -> Self {
+// TODO: Use token wrapper and custom error type
+impl TryFrom<&Token> for Operator {
+    type Error = String;
+
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         match token {
-            Token::Minus => Operator::Minus,
-            Token::Plus => Operator::Plus,
-            Token::Slash => Operator::Divide,
-            Token::Star => Operator::Star,
-        
+            Token::Minus => Ok(Operator::Minus),
+            Token::Plus => Ok(Operator::Plus),
+            Token::Slash => Ok(Operator::Divide),
+            Token::Star => Ok(Operator::Star),
             // One or two character tokens.
-            Token::Bang => Operator::Bang,
-            Token::BangEqual => Operator::BangEqual,
-            Token::Equal => Operator::Equal,
-            Token::EqualEqual => Operator::EqualEqual,
-            Token::Greater => Operator::Greater,
-            Token::GreaterEqual => Operator::GreaterEqual,
-            Token::Less => Operator::Less,
-            Token::LessEqual => Operator::LessEqual,
-            _ => panic!("Wrong token type for conversion!"),
+            Token::Bang => Ok(Operator::Bang),
+            Token::BangEqual => Ok(Operator::BangEqual),
+            Token::Equal => Ok(Operator::Equal),
+            Token::EqualEqual => Ok(Operator::EqualEqual),
+            Token::Greater => Ok(Operator::Greater),
+            Token::GreaterEqual => Ok(Operator::GreaterEqual),
+            Token::Less => Ok(Operator::Less),
+            Token::LessEqual => Ok(Operator::LessEqual),
+            _ => Err(format!("Token variant is not operator: {:?}", token)),
         }
     }
 }
@@ -75,6 +77,21 @@ impl fmt::Display for Primitive {
             Primitive::Number(n) => write!(f, "{}", n),
             Primitive::Boolean(b) => write!(f, "{}", b),
             Primitive::Nil => write!(f, "null"),
+        }
+    }
+}
+
+impl TryFrom<&Token> for Primitive {
+    type Error = String;
+
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
+        match token {
+            Token::Number(n) => Ok(Primitive::Number(*n)),
+            Token::Nil => Ok(Primitive::Nil),
+            Token::String(s) => Ok(Primitive::String(s.to_owned())),
+            Token::False => Ok(Primitive::Boolean(false)),
+            Token::True => Ok(Primitive::Boolean(true)),
+            _ => Err(format!("Could not convert {:?} to Primitive", token)),
         }
     }
 }
